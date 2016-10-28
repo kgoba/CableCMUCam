@@ -213,8 +213,8 @@ void dsmxThreadProc()
   }
 }
 
-PwmOut cableRC(PC_8);
-PwmOut auxRC(PC_9);
+PwmOut cableRC(PC_6);
+PwmOut auxRC(PC_7);
 
 
 void pixyThreadProc() 
@@ -255,8 +255,8 @@ void pixyThreadProc()
         dbg.printf("Block!\n");
         Block &block = pixy.blocks[0];
         
-        float cx = (float)block.x / 160.0f - 1;
-        float cy = (float)block.y / 100.0f - 1;
+        float cx = (float)block.x / 160.0f - 1;     // X coordinate 0..319
+        float cy = (float)block.y / 100.0f - 1;     // Y coordinate 0..199
 
         pidPan.update(cx);
         pidTilt.update(cy);
