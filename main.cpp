@@ -26,9 +26,10 @@
  * TILT - Elevator (Ch2): 1024 neutral, <1024 tilt up, >1024 tilt down
  */
  
-const int kChannelPan   = 1;
-const int kChannelTilt  = 2;
-const int kChannelEnable  = 4;
+const int kChannelPan    = 1;
+const int kChannelTilt   = 2;
+const int kChannelCable  = 3;
+const int kChannelEnable = 4;
 
 const int kDSMRangeMin = 406;
 const int kDSMRangeMax = 1642;
@@ -231,6 +232,12 @@ void pixyThreadProc()
   bool wasEnabled = false;
   
   while (true) {  
+    
+    float cableCV = 0;
+    if (dsmxChannels[kChannelCable] != 0xFFFF) {
+      cableCV = ((int16_t)dsmxChannels[kChannelCable] - 1024) / 683.0f;
+    }
+    
     // Check CMUCam
     if (dsmxChannels[kChannelEnable] == 0xFFFF || 
         dsmxChannels[kChannelEnable] < kDSMRangeNeutral) 
@@ -238,7 +245,6 @@ void pixyThreadProc()
       if (wasEnabled) {
         dbg.printf("Disabling controls\n");
         wasEnabled = false;
-        cableRC.pulsewidth_us(1500);
         auxRC.pulsewidth_us(1500);
         pidPan.cv = 0;
         pidTilt.cv = 0;
@@ -261,8 +267,9 @@ void pixyThreadProc()
         pidPan.update(cx);
         pidTilt.update(cy);
         pidCable.update(cx);
+        
+        cableCV += pidCable.getCV(-1, 1);
 
-        cableRC.pulsewidth_us(1500 + 500 * pidCable.getCV(-1, 1));
         //auxRC.pulsewidth_us(1500 + 500 * pidTilt.getCV(-1, 1));
 
         timeout = 5;
@@ -270,10 +277,10 @@ void pixyThreadProc()
       else {
         // no pixy block found - stop the movement after a timeout
         if (timeout > 0) {
+          cableCV += pidCable.getCV(-1, 1);
           timeout--;
         }
         else {
-          cableRC.pulsewidth_us(1500);
           auxRC.pulsewidth_us(1500);
           pidPan.cv = 0;
           pidTilt.cv = 0;
@@ -281,6 +288,8 @@ void pixyThreadProc()
         }        
       }
     }
+
+    cableRC.pulsewidth_us(1500 + 500 * cableCV);
    
     Thread::wait(40);
   }
